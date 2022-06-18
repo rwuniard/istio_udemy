@@ -1,1 +1,68 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ingress-gateway-configuration
+spec:
+  selector:
+   app: istio-ingressgateway # use Istio default gateway implementation
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"   # Domain name of the external website
+---
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-webapp
+  namespace: default
+spec:
+  hosts: # Which incoming host are we are applying the proxy rule to
+    # - fleetman-webapp.default.svc.cluster.local This needs to be commented out since "*" is configured below and it becomes a duplicate. When you apply it, kubectl will error out.
+    - "*" # Copy the value in the gateway host
+  gateways:
+    - ingress-gateway-configuration # THis is the name of the ingress gateway we configured above.
+  http:
+    - match:
+      - uri: # If the uri has a prefix 
+          prefix: "/experimental"
+      - uri: # Or
+          prefix: "/canary"
+      route: # Then
+        - destination:
+            host: fleetman-webapp.default.svc.cluster.local
+            subset: experimental
+    - match:
+      - uri: # If the uri is /
+          prefix: "/"
+      route: # Then it will go to this destination
+      - destination:
+          host: fleetman-webapp.default.svc.cluster.local
+          subset: original
+    - route:
+        - destination:
+            host: fleetman-webapp.default.svc.cluster.local
+            subset: original
+          weight: 90
+        - destination:
+            host: fleetman-webapp.default.svc.cluster.local
+            subset: experimental
+          weight: 10
+---
+kind: DestinationRule
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-webapp
+  namespace: default
+spec:
+  host: fleetman-webapp.default.svc.cluster.local
+  subsets:
+    - labels:
+        version: original
+      name: original
+    - labels:
+        version: experimental
+      name: experimental
 
