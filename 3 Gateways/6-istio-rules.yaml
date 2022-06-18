@@ -11,7 +11,8 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "*"   # Domain name of the external website
+    - "*.fleetman.com"   # Domain name of the external website
+    - "fleetman.com"
 ---
 kind: VirtualService
 apiVersion: networking.istio.io/v1alpha3
@@ -21,35 +22,31 @@ metadata:
 spec:
   hosts: # Which incoming host are we are applying the proxy rule to
     # - fleetman-webapp.default.svc.cluster.local This needs to be commented out since "*" is configured below and it becomes a duplicate. When you apply it, kubectl will error out.
-    - "*" # Copy the value in the gateway host
+    - "fleetman.com" # Copy the value in the gateway host
   gateways:
     - ingress-gateway-configuration # THis is the name of the ingress gateway we configured above.
   http:
-    - match:
-      - uri: # If the uri has a prefix 
-          prefix: "/experimental"
-      - uri: # Or
-          prefix: "/canary"
-      route: # Then
-        - destination:
-            host: fleetman-webapp.default.svc.cluster.local
-            subset: experimental
-    - match:
-      - uri: # If the uri is /
-          prefix: "/"
-      route: # Then it will go to this destination
-      - destination:
-          host: fleetman-webapp.default.svc.cluster.local
-          subset: original
     - route:
         - destination:
             host: fleetman-webapp.default.svc.cluster.local
             subset: original
-          weight: 90
+---
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-webapp-experimental
+  namespace: default
+spec:
+  hosts: # Which incoming host are we are applying the proxy rule to
+    # - fleetman-webapp.default.svc.cluster.local This needs to be commented out since "*" is configured below and it becomes a duplicate. When you apply it, kubectl will error out.
+    - "experimental.fleetman.com" # Copy the value in the gateway host
+  gateways:
+    - ingress-gateway-configuration # THis is the name of the ingress gateway we configured above.
+  http:
+    - route:
         - destination:
             host: fleetman-webapp.default.svc.cluster.local
             subset: experimental
-          weight: 10
 ---
 kind: DestinationRule
 apiVersion: networking.istio.io/v1alpha3
