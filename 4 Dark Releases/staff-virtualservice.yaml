@@ -1,0 +1,36 @@
+kind: VirtualService
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: staff-service
+  namespace: default
+spec:
+  hosts:      # which incoming host are we applying the proxy rules to???
+    - fleetman-staff-service
+  http:
+    - match:
+      - headers:  # IF
+          x-my-header:
+            exact: canary-staffsvc
+      route: # THEN
+      - destination:
+          host: fleetman-staff-service
+          subset: risky
+    - route: # CATCH ALL
+      - destination:
+          host: fleetman-staff-service
+          subset: safe
+---
+kind: DestinationRule
+apiVersion: networking.istio.io/v1alpha3
+metadata:
+  name: fleetman-staff-service
+  namespace: default
+spec:
+  host: fleetman-staff-service
+  subsets:
+    - labels:
+        version: safe
+      name: safe
+    - labels:
+        version: risky
+      name: risky
